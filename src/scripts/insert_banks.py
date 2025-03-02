@@ -1,4 +1,10 @@
-from helpers.db_connection import client
+import os
+import sys
+
+# Add the parent directory to the system path to import modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from helpers.db_connection import db
 
 #print(client.list_database_names())
 
@@ -7,7 +13,6 @@ from helpers.db_connection import client
 
 try:
     # Access the database and collection
-    db = client['recommendation-db']
     collection = db['banks']
 
     # Data to insert

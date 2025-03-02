@@ -1,7 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
+import os
+import sys
 
-from helpers.db_connection import client, db
+# Add the parent directory to the system path to import modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from helpers.db_connection import db
 
 # Access the "banks" and "branches" collections
 banks_collection = db["banks"]
@@ -59,4 +64,4 @@ for bank in banks:
     scrape_bank_agencies(bank)
 
 # 🔹 Fechar conexão com MongoDB
-client.close()
+db.close()

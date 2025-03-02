@@ -12,7 +12,9 @@ mongo_uri = os.getenv("RECOMMENDATION_DB_MONGO_URI")
 try:
     client = MongoClient(mongo_uri)
     print("Connected to MongoDB successfully!")
-    db = client['recommendation_db']
+    
+    db = client['recommendation-db']
     print("Database accessed successfully!")
+    
 except Exception as e:
     print(f"An error occurred: {e}")
