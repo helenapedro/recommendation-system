@@ -116,48 +116,6 @@ def scrape_bank_agencies(bank):
                 except Exception as branch_error:
                     print(f"⚠ Error while processing branch: {branch_error}")
 
-        elif bank["_id"] == "CAIXA":
-            branches = soup.find_all("div", class_="bank_agency_item")
-            for branch in branches:
-                try:
-                    # Extract branch details for CAIXA
-                    province = branch.find("h6").text.strip()  # Province
-                    name = branch.find("h4").text.strip()  # Branch name
-                    address = branch.find("div", class_="line").find_next("div", class_="info").text.strip()
-                    phone_tag = branch.find("a", href=lambda href: href and href.startswith("tel:"))
-                    phone = phone_tag.text.strip() if phone_tag else "N/A"
-                    opening_hours_tag = branch.find("img", src="/images/clock.svg").find_next("div", class_="info")
-                    opening_hours = opening_hours_tag.text.strip() if opening_hours_tag else "N/A"
-
-                    # Create branch data
-                    branch_data = {
-                        "bank_id": bank["_id"],
-                        "name": name,
-                        "endereco": address,
-                        "province": province,
-                        "telefone": phone,
-                        "latitude": None,
-                        "longitude": None,
-                        "horario_funcionamento": opening_hours,
-                        "servicos_disponiveis": [],
-                        "tempo_medio_espera": None,
-                        "avaliacoes": []
-                    }
-
-                    # Insert or update in MongoDB
-                    result = branches_collection.update_one(
-                        {"name": name, "endereco": address, "province": province},
-                        {"$set": branch_data},
-                        upsert=True
-                    )
-
-                    if result.matched_count > 0:
-                        print(f"✅ Branch updated: {name}")
-                    elif result.upserted_id:
-                        print(f"✅ Branch added: {name}")
-                except Exception as branch_error:
-                    print(f"⚠ Error while processing branch: {branch_error}")
-
         else:
             print(f"❌ Unsupported bank structure for {bank['nome']}")
 
