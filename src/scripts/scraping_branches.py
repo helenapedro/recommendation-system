@@ -16,10 +16,10 @@ warnings.simplefilter('ignore', InsecureRequestWarning)
 banks_collection = db["banks"]
 branches_collection = db["branches"]
 
-# 🔹 Find banks and its websites
+# 🔹 Find banks and their websites
 banks = banks_collection.find({"website": {"$ne": ""}})
 
-# 🔹 Funtion to collect branches info
+# 🔹 Function to collect branches info
 def scrape_bank_agencies(bank):
     url = bank["website"]
     print(f"🔍 Accessing {url} to collect data from branches of {bank['nome']}")
@@ -34,59 +34,140 @@ def scrape_bank_agencies(bank):
         # Parse the page
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Fetch branches list
-        branches = soup.find_all("div", class_="branches-list--row--branch")
-        
-        for branch in branches:
-            try:
-                if bank["_id"] == "ATL":
+        # Fetch branches based on the bank's structure
+        if bank["_id"] == "ATL":
+            branches = soup.find_all("div", class_="b-container")
+            for branch in branches:
+                try:
+                    # Extract branch details for ATL
                     name = branch.find("div", class_="b-title").text.strip()
-                    address = branch.find_all("div")[1].text.strip()  # Second <div> for the address
-                    province = branch.find_all("div")[2].text.strip()  # Third <div> for the province
-                    opening_hours = branch.find("div").find_next("p").text.strip()  # Opening hours
-                    
-                elif bank["_id"] == "BAI":
+                    address = branch.find_all("div")[1].text.strip()
+                    province = branch.find_all("div")[2].text.strip()
+                    opening_hours = branch.find("div").find_next("p").text.strip()
+
+                    # Create branch data
+                    branch_data = {
+                        "bank_id": bank["_id"],
+                        "name": name,
+                        "endereco": address,
+                        "province": province,
+                        "telefone": None,
+                        "latitude": None,
+                        "longitude": None,
+                        "horario_funcionamento": opening_hours,
+                        "servicos_disponiveis": [],
+                        "tempo_medio_espera": None,
+                        "avaliacoes": []
+                    }
+
+                    # Insert or update in MongoDB
+                    result = branches_collection.update_one(
+                        {"name": name, "endereco": address, "province": province},
+                        {"$set": branch_data},
+                        upsert=True
+                    )
+
+                    if result.matched_count > 0:
+                        print(f"✅ Branch updated: {name}")
+                    elif result.upserted_id:
+                        print(f"✅ Branch added: {name}")
+                except Exception as branch_error:
+                    print(f"⚠ Error while processing branch: {branch_error}")
+
+        elif bank["_id"] == "BAI":
+            branches = soup.find_all("div", class_="branches-list--row--branch")
+            for branch in branches:
+                try:
+                    # Extract branch details for BAI
                     name = branch.find("div", class_="branches-list--row--branch--name").text.strip()
                     address = branch.find("div", class_="branches-list--row--branch--address").text.strip()
                     province = branch.find("div", class_="branches-list--row--branch--province").text.strip()
                     phone_tag = branch.find("div", class_="branches-list--row--branch--phone").find("a")
-                    phone = phone_tag.text.strip() if phone_tag else "N/A"  # Handle missing phone numbers
-                    latitude = branch.find("div", class_="branches-list--row--branch--latitude").text.strip()
-                    longitude = branch.find("div", class_="branches-list--row--branch--longitude").text.strip()
-                    # Banco BAI-specific parsing logic
-                
-                else:
-                    print(f"Unknown bank structure for {bank['nome']}")
+                    phone = phone_tag.text.strip() if phone_tag else "N/A"
+                    latitude = None  # Placeholder for missing geolocation
+                    longitude = None  # Placeholder for missing geolocation
 
+                    # Create branch data
+                    branch_data = {
+                        "bank_id": bank["_id"],
+                        "name": name,
+                        "endereco": address,
+                        "province": province,
+                        "telefone": phone,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "horario_funcionamento": None,
+                        "servicos_disponiveis": [],
+                        "tempo_medio_espera": None,
+                        "avaliacoes": []
+                    }
 
-                # Create document for the database
-                branch_data = {
-                    "bank_id": bank["_id"],
-                    "name": name,
-                    "endereco": address,
-                    "province": province,
-                    "telefone": phone,
-                    "latitude": None,  # Placeholder for future geolocation
-                    "longitude": None, # Placeholder for future geolocation
-                    "horario_funcionamento": None,  # If available, extract from the website
-                    "servicos_disponiveis": [],  # If additional services are mentioned
-                    "tempo_medio_espera": None,  # Placeholder for future enhancements
-                    "avaliacoes": []  # Placeholder for reviews or ratings
-                }
-                
-                # Insert into MongoDB
-                branches_collection.insert_one(branch_data)
-                print(f"✅ Branch added: {name}")
-            except Exception as branch_error:
-                print(f"⚠ Error while processing branch: {branch_error}")
+                    # Insert or update in MongoDB
+                    result = branches_collection.update_one(
+                        {"name": name, "endereco": address, "province": province},
+                        {"$set": branch_data},
+                        upsert=True
+                    )
+
+                    if result.matched_count > 0:
+                        print(f"✅ Branch updated: {name}")
+                    elif result.upserted_id:
+                        print(f"✅ Branch added: {name}")
+                except Exception as branch_error:
+                    print(f"⚠ Error while processing branch: {branch_error}")
+
+        elif bank["_id"] == "CAIXA":
+            branches = soup.find_all("div", class_="bank_agency_item")
+            for branch in branches:
+                try:
+                    # Extract branch details for CAIXA
+                    province = branch.find("h6").text.strip()  # Province
+                    name = branch.find("h4").text.strip()  # Branch name
+                    address = branch.find("div", class_="line").find_next("div", class_="info").text.strip()
+                    phone_tag = branch.find("a", href=lambda href: href and href.startswith("tel:"))
+                    phone = phone_tag.text.strip() if phone_tag else "N/A"
+                    opening_hours_tag = branch.find("img", src="/images/clock.svg").find_next("div", class_="info")
+                    opening_hours = opening_hours_tag.text.strip() if opening_hours_tag else "N/A"
+
+                    # Create branch data
+                    branch_data = {
+                        "bank_id": bank["_id"],
+                        "name": name,
+                        "endereco": address,
+                        "province": province,
+                        "telefone": phone,
+                        "latitude": None,
+                        "longitude": None,
+                        "horario_funcionamento": opening_hours,
+                        "servicos_disponiveis": [],
+                        "tempo_medio_espera": None,
+                        "avaliacoes": []
+                    }
+
+                    # Insert or update in MongoDB
+                    result = branches_collection.update_one(
+                        {"name": name, "endereco": address, "province": province},
+                        {"$set": branch_data},
+                        upsert=True
+                    )
+
+                    if result.matched_count > 0:
+                        print(f"✅ Branch updated: {name}")
+                    elif result.upserted_id:
+                        print(f"✅ Branch added: {name}")
+                except Exception as branch_error:
+                    print(f"⚠ Error while processing branch: {branch_error}")
+
+        else:
+            print(f"❌ Unsupported bank structure for {bank['nome']}")
 
     except Exception as e:
         print(f"⚠ Error while processing {url}: {e}")
 
 
-# 🔹 Rodar o scraping para todos os bancos
+# 🔹 Scrape branches for all banks
 for bank in banks:
     scrape_bank_agencies(bank)
 
-# 🔹 Fechar conexão com MongoDB
+# 🔹 Close the MongoDB connection
 client.close()
