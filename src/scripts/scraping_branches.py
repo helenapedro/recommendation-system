@@ -1,12 +1,16 @@
 import requests
-from bs4 import BeautifulSoup
+import warnings
 import os
 import sys
 
 # Add the parent directory to the system path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from helpers.db_connection import db
+from helpers.db_connection import db, client
+from bs4 import BeautifulSoup
+from urllib3.exceptions import InsecureRequestWarning # Disable SSL warnings  
+
+warnings.simplefilter('ignore', InsecureRequestWarning)
 
 # Access the "banks" and "branches" collections
 banks_collection = db["banks"]
@@ -18,10 +22,10 @@ banks = banks_collection.find({"website": {"$ne": ""}})
 # 🔹 Funtion to collect branches info
 def scrape_bank_agencies(bank):
     url = bank["website"]
-    print(f"🔍 Accessing {url} to colect data from branches of {bank['name']}")
+    print(f"🔍 Accessing {url} to colect data from branches of {bank['nome']}")
 
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=10, verify=False)
         if response.status_code != 200:
             print(f"❌ Error processing {url}: {response.status_code}")
             return
@@ -64,4 +68,4 @@ for bank in banks:
     scrape_bank_agencies(bank)
 
 # 🔹 Fechar conexão com MongoDB
-db.close()
+client.close()
