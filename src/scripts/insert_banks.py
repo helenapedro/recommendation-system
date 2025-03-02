@@ -1,13 +1,4 @@
-from pymongo import MongoClient
-from dotenv import load_dotenv
-import os
-
-# Load environment variables
-load_dotenv()
-
-# MongoDB connection
-mongo_uri = os.getenv("RECOMMENDATION_DB_MONGO_URI")  
-client = MongoClient(mongo_uri)
+from helpers.db_connection import client
 
 #print(client.list_database_names())
 

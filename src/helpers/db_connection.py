@@ -6,14 +6,12 @@ import os
 load_dotenv()
 
 # Get MongoDB URI from .env
-mongo_uri = os.getenv("MONGO_URI")
+mongo_uri = os.getenv("RECOMMENDATION_DB_MONGO_URI")
 
-# Create a MongoDB client
+# Create a MongoDB client and access the database
 try:
     client = MongoClient(mongo_uri)
     print("Connected to MongoDB successfully!")
-    
-    # Access a specific database and collection
     db = client['recommendation_db']
     print("Database accessed successfully!")
 except Exception as e:
